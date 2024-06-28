@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "magstab"
+version = "0.1"
+authors = [
+  { name="jl0up", email="jl0up@" },
+]
+description = "Feedback & feedforward current stabilization system. This package controls a Red Pitaya STEMlab 125-14 and a AD5791 DAC."
+readme = "README.md"
+requires-python = ">=3.9.19"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/jl0up/magstab"
+Issues = "https://github.com/jl0up/magstab/issues"

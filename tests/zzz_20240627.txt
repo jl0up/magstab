@@ -1,0 +1,45 @@
+from pyrpl import Pyrpl
+p = Pyrpl(config='', gui=False, hostname='172.16.10.75')
+
+p.rp.iq0.free()
+p.rp.iq1.free()
+p.rp.iq2.free()
+
+# NB: gain +6dB (Moku PID_11) from RP_OUT1 to FB_SIG
+# NB: gain -3dB (Moku PID_22) from FB_SHUNT to RP_IN1
+
+na = p.networkanalyzer
+na.iq_name = 'iq2'
+is_log = True
+is_HV = True
+N = 401
+M = 9
+import numpy as np
+amplitudes = np.linspace(0,1,M+1)[1:]
+zzz = np.ones((N,M), dtype=np.complex128)*np.nan
+na.sleeptimes=1.0
+
+for m in range(M):
+    na.setup(   start_freq=1,
+                stop_freq=10000,
+                points=N,
+                logscale=is_log,
+                rbw=1,
+                q_factor_min=50,
+                auto_bandwidth=False,
+                trace_average=1,
+                average_per_point=1,
+                amplitude=amplitudes[m],
+                input='in1',
+                output_direct='out1',
+                acbandwidth=0)
+
+    %time zzz[:,m] = na.single() * 20.*is_HV
+    np.save("zzz_20240627", zzz)
+
+ff = na.frequencies
+
+from pyrpl.hardware_modules.iir.iir_theory import bodeplot
+bodeplot([ (ff, zzz[:,m], f"{amplitudes[m]:.1f} V") for m in range(M)], xlog=is_log)
+
+del p
