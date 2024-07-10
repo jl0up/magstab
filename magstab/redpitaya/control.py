@@ -1,147 +1,123 @@
+import numpy as np
+from time import sleep
+import matplotlib.pyplot as plt
+from pyrpl import Pyrpl
 
-config_init_asg =   {
-                    'ff_frequency': 51.0,
-                    'ff_amplitude': 0.5,
-                    'ff_phase': 0.0,
-                    'ff_out': 'out2',
-                    }
+p = Pyrpl(hostname='172.16.10.75', config='', gui=False)
 
-# config_init_bpf =   {
-#                     'f0': 50,
-#                     'g0': 3,
-#                     'p0': 0,
-#                     'f1': 150,
-#                     'g1': 3,
-#                     'p1': 120,
-#                     'f2': 250,
-#                     'g2': 3,
-#                     'p2': 240,
-#                     }
+def dds_function(fext=49.98,  q=1.56, W=128):
+    import numpy as np
+    N = 2**14
+    f0 = q*fext
+    k = int(np.round(N/2 * f0/fext))
+    k0 = 1 # a >0 delay must be set because output is set to 1st value of data array while waiting for trigger
+    assert k0 + k + W < N
+    x = np.zeros(N, dtype='float64')
+    x[k0:k0 + W] = 1.0
+    x[k0 + k:k0 + k + W] = -1.0
+    return x
 
-config_init_bpf0 =  {
-                    'f': 50,
-                    'g': 3,
-                    'p': 0,
-                    }
-config_init_bpf1 =  {
-                    'f': 150,
-                    'g': 3,
-                    'p': 120,
-                    }
-config_init_bpf2 =  {
-                    'f': 250,
-                    'g': 3,
-                    'p': 240,
-                    }
+preset_asg0 = dict([('waveform', 'dc'),
+             ('amplitude', 0.95),
+             ('offset', 0.0),
+             ('frequency', 77.99826562404633),
+             ('trigger_source', 'ext_positive_edge'),
+             ('output_direct', 'off'),
+             ('start_phase', 0.0),
+             ('cycles_per_burst', 1)])
 
-config_init_bpf =   {
-                    'config_bpf0': config_init_bpf0,
-                    'config_bpf1': config_init_bpf1,
-                    'config_bpf2': config_init_bpf2
-                    }
+preset_asg1 = dict([('waveform', 'dc'),
+             ('amplitude', 0.0),
+             ('offset', 0.5),
+             ('frequency', 0.0),
+             ('trigger_source', 'immediately'),
+             ('output_direct', 'out1'),
+             ('start_phase', 0.0),
+             ('cycles_per_burst', 0)])
 
-config_init_prefilter = {
-                        'ff_pre_lpf': 4858, # low-pass filter frequency (Hz) applied on generated signal before selective band-pass filters
-                        'ff_pre_hpf': 2429, # high-pass filter frequency (Hz) applied on generated signal before selective band-pass filters
-                        'ff_pre_gain': 2,   # gain applied on ff signal _after LP and HP filters_, before selective band-pass filters
-                        }
+preset_iq0 = dict([('input', 'asg0'),
+             ('acbandwidth', 0),
+             ('frequency', 50.0003807246685),
+             ('bandwidth', [1.1857967662444893, 0]),
+             ('quadrature_factor', 0.0),
+             ('output_signal', 'output_direct'),
+             ('gain', 0.12),
+             ('amplitude', 0.0),
+             ('phase', 272.0),
+             ('output_direct', 'out2'),
+             ('modulation_at_2f', 'off'),
+             ('demodulation_at_2f', 'off')])
+preset_iq1 = dict([('input', 'asg0'),
+             ('acbandwidth', 0),
+             ('frequency', 350.0011421740055),
+             ('bandwidth', [1.1857967662444893, 0]),
+             ('quadrature_factor', 0.0),
+             ('output_signal', 'output_direct'),
+             ('gain', 0.25),
+             ('amplitude', 0.0),
+             ('phase', 115.0),
+             ('output_direct', 'out2'),
+             ('modulation_at_2f', 'off'),
+             ('demodulation_at_2f', 'off')])
+preset_iq2 = dict([('input', 'asg0'),
+             ('acbandwidth', 0),
+             ('frequency', 250.0019036233425),
+             ('bandwidth', [1.1857967662444893, 0, 0, 0]),
+             ('quadrature_factor', 0.0),
+             ('output_signal', 'output_direct'),
+             ('gain', 0.5),
+             ('amplitude', 0.0),
+             ('phase', 55.0),
+             ('output_direct', 'out2'),
+             ('modulation_at_2f', 'off'),
+             ('demodulation_at_2f', 'off')])
 
-config_init_ff = {**config_init_asg, **config_init_bpf, **config_init_prefilter}
+preset_pid0 = dict([('input', 'in1'),
+             ('output_direct', 'out1'),
+             ('setpoint', 0.2),
+             ('p', 3.0),
+             ('i', 0.0),
+             ('inputfilter', [0, 0, 0, 0]),
+             ('max_voltage', 0.9998779296875),
+             ('min_voltage', -1.0),
+             ('pause_gains', 'off'),
+             ('paused', False),
+             ('differential_mode_enabled', False)])
 
-
-config_init_fb =    {
-                    'fb_gain_p': 1,
-                    'fb_gain_i': 0.1,
-                    'fb_in': 'in1',
-                    'fb_out': 'out1',
-                    }
-
-class RPCurrentShunt(object):
-
-	
-    def __init__(self, ip='172.16.10.75', yaml_file=''): #yaml_file='/Users/labo/Documents/python/test.yml'):
-        from pyrpl import Pyrpl
-        self.yaml_file = yaml_file
-        self.p = Pyrpl(hostname=ip, config=self.yaml_file, gui=False)
-        self.feedforward_init(**config_init_ff)
-        self.feedback_init(**config_init_fb)
-
-    def __del__(self):
-        del self.p.rp
-        del self.p
-
-
-    def feedforward_init(   self,
-                            ff_frequency=0,
-                            ff_amplitude=0,
-                            ff_pre_gain=0,
-                            ff_pre_lpf=0,
-                            ff_pre_hpf=0,
-                            ff_phase=0,
-                            ff_out='off',
-                            config_bpf0=config_init_bpf0,
-                            config_bpf1=config_init_bpf1,
-                            config_bpf2=config_init_bpf2,
-                        ):
-
-        self.ff_asg  = self.p.rp.asg0
-        self.ff_bpf0 = self.p.rp.iq0
-        self.ff_bpf1 = self.p.rp.iq1
-        self.ff_bpf2 = self.p.rp.iq2
-        self.ff_prefilter = self.p.rp.pid0
-
-        self.ff_asg.setup(	waveform='square',
-                            frequency=ff_frequency,
-                            amplitude=ff_amplitude,
-                            offset=ff_amplitude/2.,
-                            start_phase=ff_phase,
-                            trigger_source='ext_positive_edge',
-                            output_direct='off',
-                            cycles_per_burst=1
-                        )
-        
-        self.ff_prefilter.setup(    p=ff_pre_gain,
-                                    i=0,
-                                    input=self.ff_asg.name,
-                                    output_direct='off',
-                                    inputfilter=[ ff_pre_lpf, -ff_pre_hpf, 0, 0 ]
-                                )
-
-        for bpf,cfg in zip( [ self.ff_bpf0, self.ff_bpf1, self.ff_bpf2 ],
-                            [ config_bpf0, config_bpf1, config_bpf2 ]
-                        ):
-            bpf.setup(	frequency=cfg['f'],				# center frequency
-                        bandwidth=cfg['f']/50.,					# the filter quality factor
-                        acbandwidth=10.,				# ac filter to remove pot. input offsets
-                        phase=cfg['p'],						# nominal phase at center frequency (propagation phase lags not accounted for)
-                        gain=cfg['g'],						# peak gain=+6 dB
-                        output_direct=ff_out,
-                        output_signal='output_direct',
-                        input=self.ff_prefilter.name
-                        )
+preset_pid1 = dict([('input', 'out2'),
+             ('output_direct', 'out1'),
+             ('setpoint', 0.0),
+             ('p', 1.0),
+             ('i', 0.0),
+             ('inputfilter', [0, 0, 0, 0]),
+             ('max_voltage', 0.9998779296875),
+             ('min_voltage', -1.0),
+             ('pause_gains', 'off'),
+             ('paused', False),
+             ('differential_mode_enabled', False)])
 
 
-    def feedback_init(  self, 
-                        fb_gain_p=1,
-                        fb_gain_i=0,
-                        fb_in='in1',
-                        fb_out='out1',
-                        fb_lpf=0,
-                        fb_hpf=0
-                    ):
+# asg1 : to add a DC component *after* band-pass-filters
+ff_asg1 = p.rp.asg1
+ff_asg1.setup(**preset_asg1)
 
-        self.ff_pid1 = self.p.rp.pid1
-        self.ff_pid1.setup( p=fb_gain_p,
-                            i=fb_gain_i,
-                            input=fb_in,
-                            output_direct=fb_out,
-                            inputfilter=[ fb_lpf, -fb_hpf, 0, 0 ]
-                        )
-        
+# asg0 : comb 1,0,0,...,-1,0,0,... for FF, synced on external trigger (mains)
+ff_asg0 = p.rp.asg0
+ff_asg0.setup(**preset_asg0)
+ff_asg0.data = dds_function()
 
-    @property
-    def ff0_f(self):
-        return self.ff_bpf0
-    @ff0_f.setter
-    def ff0_f(self, f):
-        self.ff_bpf0.frequency = f
+# iq0, iq1, iq2 : three demodulators used as band-pass filters on asg0, output on out2
+ff_iq0 = p.rp.iq0
+ff_iq1 = p.rp.iq1
+ff_iq2 = p.rp.iq2
+ff_iq0.setup(**preset_iq0)
+ff_iq1.setup(**preset_iq1)
+ff_iq2.setup(**preset_iq2)
+
+# pid1 to copy out2 (of FF) to out1 if we want to use a single shunt path for both FB and FF
+fb_pid1 = p.rp.pid1
+fb_pid1.setup(**preset_pid1)
+
+# pid0 : PID for FB
+fb_pid0 = p.rp.pid0
+fb_pid0.setup(**preset_pid0)

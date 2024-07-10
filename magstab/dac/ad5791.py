@@ -1,6 +1,6 @@
 import sys
 import time
-import redpitaya_scpi as scpi
+from ..external import redpitaya_scpi as scpi
 
 
 
