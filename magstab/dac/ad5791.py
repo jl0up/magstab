@@ -43,9 +43,9 @@ def code_to_hexstr(c: int) -> str:
 # END *** USED FOR DEBUGGING
 
 
-VREFP =  10.00124
-VREFN =  -9.99939
-IP = '172.16.10.75'
+VREFP_DEFAULT =  10.00119
+VREFN_DEFAULT =  -9.99939
+IP = '192.168.88.103'
 PORT = "5000"
 SPI_SPEED = 100e3
 
@@ -99,7 +99,7 @@ def _parse_read(buff: str) -> int:
     return _tuple_to_code(_intstr_to_tuple(buff))
 
 
-def _code_to_volt(code: int, Vrefp=VREFP, Vrefn=VREFN, nbits=20, is_two_complement=True) -> float:
+def _code_to_volt(code: int, Vrefp=VREFP_DEFAULT, Vrefn=VREFN_DEFAULT, nbits=20, is_two_complement=True) -> float:
     '''Converts a 20-bit code to the corresponding voltage, using actual voltages on pins Vrefp and Vrefn of DAC
     '''
     if is_two_complement:
@@ -114,7 +114,7 @@ def _code_to_volt(code: int, Vrefp=VREFP, Vrefn=VREFN, nbits=20, is_two_compleme
     else:
         return voltage 
 
-def _volt_to_code(voltage: float, Vrefp=VREFP, Vrefn=VREFN, nbits=20, is_two_complement=True) -> int:
+def _volt_to_code(voltage: float, Vrefp=VREFP_DEFAULT, Vrefn=VREFN_DEFAULT, nbits=20, is_two_complement=True) -> int:
     '''Converts a desired voltage value to a 20-bit code used by the DAC,
     considering actual voltages on pins Vrefp and Vrefn
     '''
@@ -190,8 +190,11 @@ AD5791_MASK_SFT  = AD5791_BIT_RESET | AD5791_BIT_CLEAR | AD5791_BIT_LDAC
     
 class DAC(object):
 
-    def __init__(self, ip=IP, port=PORT, default_voltage=4.876543, spi_speed=SPI_SPEED, spi_dev='/dev/spidev1.0'):
+    def __init__(self, ip=IP, port=PORT, default_voltage=4.876543, spi_speed=SPI_SPEED, spi_dev='/dev/spidev2.0', Vrefn=VREFN_DEFAULT, Vrefp=VREFP_DEFAULT):
         self.rp_s = scpi.scpi(ip)
+        self.Vrefn = Vrefn
+        self.Vrefp = Vrefp
+
         messages_init = [
             'SPI:INIT:DEV "{0}"'.format(spi_dev),
             'SPI:SET:DEF',
@@ -213,7 +216,7 @@ class DAC(object):
         _DEBUG("AD5791_REG_SFT", pprint_code(self.reg_sft))
 
         self._delayed_trig = False
-        self.reg_clr = _volt_to_code(default_voltage)
+        self.reg_clr = _volt_to_code(default_voltage, Vrefn=self.Vrefn, Vrefp=self.Vrefp)
 
     def __del__(self):
         msg = 'SPI:RELEASE'
@@ -436,7 +439,7 @@ class DAC(object):
 
     @property
     def V(self):
-        return _code_to_volt(self.reg_dac & AD5791_MASK_DATA)
+        return _code_to_volt(self.reg_dac & AD5791_MASK_DATA, Vrefn=self.Vrefp, Vrefp=self.Vrefp)
 
     @V.setter
     def V(self, v):
@@ -444,7 +447,7 @@ class DAC(object):
         # _DEBUG(msg)
         self.rp_s.tx_txt(msg)
 
-        c = _volt_to_code(v)
+        c = _volt_to_code(v, Vrefn=self.Vrefn, Vrefp=self.Vrefp)
         assert _is_bit_in_code(AD5791_MASK_DATA, c)
         msg = 'SPI:MSG0:TX3:RX:CS {0}'.format(_parse_write(AD5791_W | AD5791_REG_DAC | c))
         # _DEBUG(msg, end="\t--->\t")
