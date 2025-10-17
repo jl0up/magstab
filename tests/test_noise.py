@@ -3,7 +3,7 @@ from time import sleep
 import matplotlib.pyplot as plt
 from pyrpl import Pyrpl
 
-IP = '172.16.10.75'
+IP = '192.168.88.103'
 LINESTYLE = '-'
 LINEWIDTH = 0.75
 ALPHA = 0.5
@@ -12,7 +12,7 @@ N = 2**14   # buffer size of Red Pitaya (data length for scope or generators)
 TIME_RESOLUTION = 8e-9  # property of Red Pitaya
 DECIMATION = 2**13
 F_EXT = 49.98       # expected ~50 Hz line frequency
-GAIN_BASEL = 1e3 # divide by half when 50 Ohm in parallel to output
+GAIN_BASEL = 1e4 # divide by half when 50 Ohm in parallel to output
 
 
 p = Pyrpl(hostname=IP, config='', gui=False)
@@ -37,7 +37,7 @@ def spectrum(x: float, rbw=0.9313225746154784) -> float:
     y = np.sqrt(np.abs(y)**2 * 2)   # this forumla ensures sum(x**2) == sum(y**2)
     return y/np.sqrt(rbw)           # now a spectral density in V/sqrt(Hz) : ensures sum(x**2) == sum(y**2) * rbw
 
-def plot_rp(scope, axes, ch1='in1', ch2='out1', label='', gain1=GAIN_BASEL, gain2=1, avg=1):
+def plot_rp(scope, axes, ch1='in1', ch2='out1', label='', gain1=1, gain2=1, avg=1):
     scope.input1 = ch1
     scope.input2 = ch2
     sleep(2)
@@ -55,9 +55,11 @@ def plot_rp(scope, axes, ch1='in1', ch2='out1', label='', gain1=GAIN_BASEL, gain
     y1 =  spectrum(x1, rbw)
     y2 =  spectrum(x2, rbw)
 
+    print("*", end='')
     y1_mean = y1
     y2_mean = y2
     for i in range(1, avg):
+        print(".", end='')
         x1_, x2_ = scope.single()
         x1_ /= gain1
         x2_ /= gain2
@@ -68,10 +70,11 @@ def plot_rp(scope, axes, ch1='in1', ch2='out1', label='', gain1=GAIN_BASEL, gain
 
     noise1_ = np.sqrt(np.sum(y1_mean**2)*rbw/N)
     noise2_ = np.sqrt(np.sum(y2_mean**2)*rbw/N)
+    print("\n", end='')
 
     ax[0,0].plot(t*1e3, x1*gain1, LINESTYLE, linewidth=LINEWIDTH, alpha=ALPHA, label='(' + scope.input1 + ') ' + f'{noise1*1.e6: 3.3f} µVmrs ' + label)
     ax[0,1].plot(t*1e3, x2*gain2, LINESTYLE, linewidth=LINEWIDTH, alpha=ALPHA, label='(' + scope.input2 + ') ' + f'{noise2*1.e6: 3.3f} µVmrs ' + label)
-    ax[1,0].loglog(f, y1_mean, LINESTYLE, linewidth=LINEWIDTH, alpha=ALPHA, label='(' + scope.input1 + ') ' + f'{noise1_*1.e6: 3.3f} µVmrs ' + label)
+    ax[1,0].semilogx(f, 20*np.log10(y1_mean), LINESTYLE, linewidth=LINEWIDTH, alpha=ALPHA, label='(' + scope.input1 + ') ' + f'{noise1_*1.e6: 3.3f} µVrms ' + label)
     ax[1,1].loglog(f, y2_mean, LINESTYLE, linewidth=LINEWIDTH, alpha=ALPHA, label='(' + scope.input2 + ') ' + f'{noise2_*1.e6: 3.3f} µVmrs ' + label)
 
 
@@ -161,7 +164,7 @@ preset_asg0 = dict([('waveform', 'dc'),
 
 preset_asg1 = dict([('waveform', 'dc'),
              ('amplitude', 0.0),
-             ('offset', 0.23),
+             ('offset', 0.4),
              ('frequency', 0.0),
              ('trigger_source', 'immediately'),
              ('output_direct', 'out1'),
@@ -171,46 +174,47 @@ preset_asg1 = dict([('waveform', 'dc'),
 preset_iq0 = dict([('input', 'asg0'),
              ('acbandwidth', 0),
              ('frequency', 250),
-             ('bandwidth', [1.1857967662444893, 0, 0, 0]),
+             ('bandwidth', [1.1857967662444893*2, 0, 0, 0]),
              ('quadrature_factor', 0.0),
              ('output_signal', 'output_direct'),
-             ('gain', 1.1),
-             ('amplitude', 0.0),
-             ('phase', 100.0),
-             ('output_direct', 'out2'),
-             ('modulation_at_2f', 'off'),
-             ('demodulation_at_2f', 'off')])
-preset_iq1 = dict([('input', 'asg0'),
-             ('acbandwidth', 0),
-             ('frequency', 350),
-             ('bandwidth', [1.1857967662444893, 0]),
-             ('quadrature_factor', 0.0),
-             ('output_signal', 'output_direct'),
-             ('gain', 0.7),
+             ('gain', 2.05),
              ('amplitude', 0.0),
              ('phase', 200.0),
              ('output_direct', 'out2'),
              ('modulation_at_2f', 'off'),
              ('demodulation_at_2f', 'off')])
-preset_iq2 = dict([('input', 'asg0'),
+preset_iq1 = dict([('input', 'asg0'),
              ('acbandwidth', 0),
-             ('frequency', 550),
+             ('frequency', 50),
              ('bandwidth', [1.1857967662444893, 0]),
              ('quadrature_factor', 0.0),
              ('output_signal', 'output_direct'),
-             ('gain', 1.5),
+             ('gain', 0.7),
              ('amplitude', 0.0),
-             ('phase', 65.0),
+             ('phase', 90.0),
+             ('output_direct', 'out2'),
+             ('modulation_at_2f', 'off'),
+             ('demodulation_at_2f', 'off')])
+preset_iq2 = dict([('input', 'asg0'),
+             ('acbandwidth', 0),
+             ('frequency', 350),
+             ('bandwidth', [1.1857967662444893*2, 0]),
+             ('quadrature_factor', 0.0),
+             ('output_signal', 'output_direct'),
+             ('gain', 1.25),
+             ('amplitude', 0.0),
+             ('phase', 220.0),
              ('output_direct', 'out2'),
              ('modulation_at_2f', 'off'),
              ('demodulation_at_2f', 'off')])
 
 preset_pid0 = dict([('input', 'in1'),
              ('output_direct', 'out1'),
-             ('setpoint', -0.0),
-             ('p', 60),        # 12 for 1 kHz, 0.8 for 3 kHz
-             ('i', 100.0e3),      # 15e3 for 1 kHz, 5e3 for 3 kHz
-             ('inputfilter', [0, 0, 0, 0]),
+             ('setpoint', 0.0),
+             ('p', 2.0),        # 12 for 1 kHz, 0.8 for 3 kHz
+             ('i', 2000.0),      # 15e3 for 1 kHz, 5e3 for 3 kHz
+             #('d', 0),      
+             ('inputfilter', [0,0,0,0]),
              ('max_voltage', 0.9998779296875),
              ('min_voltage', -1.0),
              ('pause_gains', 'off'),
@@ -321,9 +325,6 @@ s.setup(**preset_scope)
 s.duration = N*DECIMATION*TIME_RESOLUTION
 
 
-# Prepare plotting
-# plt.rcParams['text.usetex'] = True
-fig, ax = plt.subplots(2, 2, figsize=(24,12), dpi=150)
 
 
 
@@ -358,6 +359,9 @@ ff_iq2.setup(**preset_iq2)
 
 
 
+# Prepare plotting
+# plt.rcParams['text.usetex'] = True
+fig, ax = plt.subplots(2, 2, figsize=(24,12), dpi=150)
 
 
 
@@ -370,38 +374,56 @@ plot_rp(s, ax, ch1='in1', ch2='out1', gain1=GAIN_BASEL, gain2=1, label='No FF no
 
 
 
-
-
-
 # FF only
 
 fb_pid0.output_direct = 'off'
 ff_pid1.output_direct = preset_pid1['output_direct']
-# ff_asg1.output_direct = preset_asg1['output_direct']
+ff_asg1.output_direct = preset_asg1['output_direct']    # because shunt PCB can't work below transistor threshold
 plot_rp(s, ax, ch1='in1', ch2='out1', gain1=GAIN_BASEL, label='FF only', avg=AVERAGES)
-
-
-
-
 
 
 
 # FB only
 
-fb_pid0.output_direct = preset_pid0['output_direct']
 ff_pid1.output_direct = 'off'
+ff_asg1.output_direct = preset_asg1['output_direct']    # because shunt PCB can't work below transistor threshold
+fb_pid0.i = 0
+fb_pid0.ival = 0
+fb_pid0.output_direct = preset_pid0['output_direct']
 # ff_asg1.output_direct = 'off'
-plot_rp(s, ax, ch1='in1', ch2='out1', gain1=GAIN_BASEL, label='FB only', avg=AVERAGES)
+plot_rp(s, ax, ch1='in1', ch2='out1', gain1=GAIN_BASEL, label='FB only (P only)', avg=AVERAGES)
 
 
+ff_pid1.output_direct = 'off'
+ff_asg1.output_direct = preset_asg1['output_direct']    # because shunt PCB can't work below transistor threshold
+fb_pid0.i = preset_pid0['i']
+fb_pid0.ival = 0
+plot_rp(s, ax, ch1='in1', ch2='out1', gain1=GAIN_BASEL, label='FB only (PI)', avg=AVERAGES)
+# plot_rp(s, ax, ch1='in2', ch2='out2', gain1=1, gain2=1, label='FB only (PI) (in2/out2)', avg=AVERAGES)
+
+
+# ff_pid1.output_direct = 'off'
+# ff_asg1.output_direct = 'off'
+# fb_pid0.ival = 0
+# plot_rp(s, ax, ch1='in1', ch2='out1', gain1=GAIN_BASEL, label='FB only (PI) and no offset', avg=AVERAGES)
+# # plot_rp(s, ax, ch1='in2', ch2='out2', gain1=1, gain2=1, label='FB only (PI) and no offset (in2/out2)', avg=AVERAGES)
+
+
+# ff_pid1.output_direct = 'off'
+# ff_asg1.output_direct = preset_asg1['output_direct']    # because shunt PCB can't work below transistor threshold
+# fb_pid0.inputfilter = [1e5,0,0,0]
+# fb_pid0.ival = 0
+# plot_rp(s, ax, ch1='in1', ch2='out1', gain1=GAIN_BASEL, label='FB only and 1 kHz filter', avg=AVERAGES)
 
 
 # Both FF + FB
 
+ff_asg1.output_direct = preset_asg1['output_direct']    # because shunt PCB can't work below transistor threshold
 fb_pid0.output_direct = preset_pid0['output_direct']
 ff_pid1.output_direct = preset_pid1['output_direct']
-# ff_asg1.output_direct = 'off'
+fb_pid0.ival = 0
 plot_rp(s, ax, ch1='in1', ch2='out1', gain1=GAIN_BASEL, label='FF + FB', avg=AVERAGES)
+# plot_rp(s, ax, ch1='in2', ch2='out2', gain1=1, gain2=1, label='FF + FB (in2/out2)', avg=AVERAGES)
 
 
 
@@ -420,23 +442,23 @@ ax[1,1].grid(True, linewidth=0.25, which='both')
 
 ax[0,0].set_xlabel('time (ms)')
 ax[0,0].set_ylabel('V')
-ax[0,0].set_xlim([-50, 50])
+ax[0,0].set_xlim([-25, 25])
 ax[0,0].set_ylim([-1.1, 1.1])
 
 ax[0,1].set_xlabel('time (ms)')
 ax[0,1].set_ylabel('V')
-ax[0,1].set_xlim([-50, 50])
-ax[0,1].set_ylim([-1.1, 1.1])
+ax[0,1].set_xlim([-25, 25])
+ax[0,1].set_ylim([-0.1, 1.1])
 
 ax[1,0].set_xlabel('freq (Hz)')
-ax[1,0].set_ylabel(r'V / $\sqrt{{}}$Hz')
+ax[1,0].set_ylabel(r'dBA / $\sqrt{{}}$Hz')
 ax[1,0].set_xlim([1, 10e3])
-ax[1,0].set_ylim([1e-7, 1e-2])
+# ax[1,0].set_ylim([1e-7, 1e-2])
 
 ax[1,1].set_xlabel('freq (Hz)')
 ax[1,1].set_ylabel(r'V / $\sqrt{{}}$Hz')
 ax[1,1].set_xlim([1, 10e3])
-ax[1,1].set_ylim([1e-7, 1e-2])
+# ax[1,1].set_ylim([1e-7, 1e-2])
 
 fig.tight_layout()
 fig.savefig('scope.pdf')
