@@ -86,6 +86,7 @@ class DigitApp(App):
         self.screen.styles.background = color
 
     def __init__(self, d=None):
+        super().__init__()
         if d is None:
             self.exit()
         else:
@@ -150,14 +151,19 @@ class DigitApp(App):
             new_v = np.fix(self.v*10000.0)/10000.0
         elif event.key == "semicolon":
             new_v = np.fix(self.v*100000.0)/100000.0
-        # else:
-        #     new_v = self.v
+        else:
+            new_v = self.v
 
-
-        if VREFN <= new_v <= VREFP:
+        print(new_v)
+        if self.d.Vrefn <= new_v <= self.d.Vrefp:
             # self.action_set_background("black")
             self.d.V = new_v
             self.v = self.d.V
+            print(self.d.Vrefn)
+            print(self.d.Vrefp)
+            print(self.d.V)
+            print(self.v)
+            print(new_v)
             self.volt_display.update_V(self.v)
         else:
             self.bell()
@@ -174,7 +180,7 @@ if __name__ == "__main__":
     Vdef = 0
     IP = '192.168.88.103'
 
-    dac = ad5791.DAC(ip=IP, default_voltage=Vdef, Vrefp=VREFP, Vrefn=VREFN)
+    dac = ad5791.DAC(ip=IP, default_voltage=Vdef, Vrefn=VREFN, Vrefp=VREFP)
     dac.op_gnd = True
     app = DigitApp(d=dac)
     app.run()
