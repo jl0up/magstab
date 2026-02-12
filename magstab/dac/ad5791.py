@@ -439,7 +439,7 @@ class DAC(object):
 
     @property
     def V(self):
-        return _code_to_volt(self.reg_dac & AD5791_MASK_DATA, Vrefn=self.Vrefp, Vrefp=self.Vrefp)
+        return _code_to_volt(self.reg_dac & AD5791_MASK_DATA, Vrefn=self.Vrefn, Vrefp=self.Vrefp)
 
     @V.setter
     def V(self, v):
